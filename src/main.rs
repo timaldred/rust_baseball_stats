@@ -219,14 +219,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 #[derive(Debug, Clone)]
 struct AggregatedPlayer {
-    first_name: Option<String>,
+    first_name: String,
     last_name: String,
     first_season: u32,      // lowest season number
     last_season: u32,       // highest season number  
     link: String,
     seasons_played: u32,    // count of seasons
-    positions: Vec<String>, // all unique positions
-    teams: Vec<String>,     // all unique teams
+    positions: String, // all unique positions
+    teams: String,     // all unique teams
     total_games_played: u32,
     total_at_bats: u32,
     total_runs: u32,
@@ -300,13 +300,13 @@ for (link, seasons) in &player_groups {
     // populate the aggregated player record
     let aggregated_player = AggregatedPlayer {
         link: link.clone(),
-        first_name: first_season_record.first_name.clone(),
+        first_name: first_season_record.first_name.as_deref().unwrap_or("N/A").to_string(),
         last_name: first_season_record.last_name.clone(),
         first_season,
         last_season,
         seasons_played: seasons.len() as u32,
-        positions: unique_positions,
-        teams: unique_teams,
+        positions: unique_positions.join(", "),
+        teams: unique_teams.join(", "),
         total_games_played,
         total_at_bats,
         total_runs,
@@ -324,6 +324,32 @@ for (link, seasons) in &player_groups {
     aggregated_players.push(aggregated_player);
 }
 
+    // create top 10 games played
+    println!();
+
+    // sort players by homeruns (highest first)
+    let mut sorted_career_by_games = aggregated_players.clone();
+    sorted_career_by_games.sort_by(|a, b| b.total_games_played.cmp(&a.total_games_played));
+
+    // take the top 10
+    let top_10_career_games = &sorted_career_by_games[0..10];
+
+    // display the results
+    println!("\nTop 10 games played in a career:");
+    println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<3}", "Rank", "First Name", "Last Name", "From", "To", "Games Played");
+    println!("{}", "-".repeat(63));
+
+    for (i, player) in top_10_career_games.iter().enumerate() {
+        println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<3}", 
+                i + 1, 
+                player.first_name, 
+                player.last_name, 
+                player.first_season, 
+                player.last_season,
+                player.total_games_played);
+    }
+
+
     // create top 10 homerun career
     println!();
 
@@ -336,22 +362,19 @@ for (link, seasons) in &player_groups {
 
     // display the results
     println!("\nTop 10 homeruns in a career:");
-    println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", "Rank", "First Name", "Last Name", "Teams", "Seasons", "Home runs");
-    println!("{}", "-".repeat(60));
+    println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<6} {:<3}", "Rank", "First Name", "Last Name", "From", "To", "Total", "Home runs");
+    println!("{}", "-".repeat(67));
 
     for (i, player) in top_10_career_homeruns.iter().enumerate() {
-        let first_name = player.first_name.as_deref().unwrap_or("N/A");
-        println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", 
+        println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<6} {:<3}", 
                 i + 1, 
-                link.first_name, 
-                link.last_name, 
-                link.teams, 
-                link.seasons_played, 
-                link.total_homeruns);
+                player.first_name, 
+                player.last_name, 
+                player.first_season, 
+                player.last_season,
+                player.seasons_played,
+                player.total_homeruns);
     }
-
-
-
 
 
 
