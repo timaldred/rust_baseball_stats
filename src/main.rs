@@ -123,6 +123,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // read and parse command line arguments
     let cli = Cli::parse();
 
+    println!();
     println!("Loading baseball data...");
     
     // tell it where the data is
@@ -182,6 +183,7 @@ struct AggregatedPlayer {
     seasons_played: u32,    // count of seasons
     positions: String, // all unique positions
     teams: String,     // all unique teams
+    team_count: u32,
     total_games_played: u32,
     total_at_bats: u32,
     total_runs: u32,
@@ -197,7 +199,7 @@ struct AggregatedPlayer {
 }
 
 // group players by their unique link
-println!("Grouping players by the link column...");
+println!("Identifying individual players...");
 // create a new data set, using strings (vecs) from the cleanplayerseason dataset as the identifiers, but for now it's blank
 let mut player_groups: HashMap<String, Vec<CleanPlayerSeason>> = HashMap::new();
 
@@ -262,6 +264,7 @@ for (link, seasons) in &player_groups {
         seasons_played: seasons.len() as u32,
         positions: unique_positions.join(", "),
         teams: unique_teams.join(", "),
+        team_count: unique_teams.len() as u32,
         total_games_played,
         total_at_bats,
         total_runs,
@@ -279,6 +282,8 @@ for (link, seasons) in &player_groups {
     aggregated_players.push(aggregated_player);
 }
 
+    println!("Successfully created {} player records", aggregated_players.len());
+    println!();
 
 // reading the command line arguments  
 #[derive(Parser)]
@@ -288,6 +293,16 @@ struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
 }
+
+// function for truncating text
+fn truncate_string(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max_len.saturating_sub(3)])
+    }
+}
+
 
 // define the available commands
 #[derive(Subcommand)]
@@ -376,7 +391,7 @@ enum Commands {
             let top_10_hits = &sorted_by_hits[0..10];
 
             // display the results
-            println!("\nTop 10 hits in a season:");
+            println!("\nTop 10 most hits in a season:");
             println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", "Rank", "First Name", "Last Name", "Team", "Season", "Hits");
             println!("{}", "-".repeat(60));
 
@@ -389,6 +404,58 @@ enum Commands {
                         player.team, 
                         player.season, 
                         player.hits);
+            }
+
+            // create top 10 homerun seasons
+            println!();
+
+            // sort players by homeruns (highest first)
+            let mut sorted_by_homeruns = clean_records.clone();
+            sorted_by_homeruns.sort_by(|a, b| b.homeruns.cmp(&a.homeruns));
+
+            // take the top 10
+            let top_10_homeruns = &sorted_by_homeruns[0..10];
+
+            // display the results
+            println!("\nTop 10 most homeruns in a season:");
+            println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", "Rank", "First Name", "Last Name", "Team", "Season", "HRs");
+            println!("{}", "-".repeat(60));
+
+            for (i, player) in top_10_homeruns.iter().enumerate() {
+                let first_name = player.first_name.as_deref().unwrap_or("N/A");
+                println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", 
+                        i + 1, 
+                        first_name, 
+                        player.last_name, 
+                        player.team, 
+                        player.season, 
+                        player.homeruns);
+            }
+
+            // create top 10 walk seasons
+            println!();
+
+            // sort players by hits (highest first)
+            let mut sorted_by_walks = clean_records.clone();
+            sorted_by_walks.sort_by(|a, b| b.walks.cmp(&a.walks));
+
+            // take the top 10
+            let top_10_walks = &sorted_by_walks[0..10];
+
+            // display the results
+            println!("\nTop 10 most walks in a season:");
+            println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", "Rank", "First Name", "Last Name", "Team", "Season", "Walks");
+            println!("{}", "-".repeat(60));
+
+            for (i, player) in top_10_walks.iter().enumerate() {
+                let first_name = player.first_name.as_deref().unwrap_or("N/A");
+                println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", 
+                        i + 1, 
+                        first_name, 
+                        player.last_name, 
+                        player.team, 
+                        player.season, 
+                        player.walks);
             }
         }
         Some(Commands::Careers) => {
@@ -405,20 +472,74 @@ enum Commands {
 
             // display the results
             println!("\nTop 10 games played in a career:");
-            println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<3}", "Rank", "First Name", "Last Name", "From", "To", "Games Played");
-            println!("{}", "-".repeat(63));
+            println!("{:<4} {:<15} {:<15} {:<20} {:<6} {:<6} {:<3}", "Rank", "First Name", "Last Name", "Teams", "From", "To", "Games");
+            println!("{}", "-".repeat(77));
 
             for (i, player) in top_10_career_games.iter().enumerate() {
-                println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<3}", 
+                println!("{:<4} {:<15} {:<15} {:<20} {:<6} {:<6} {:<3}", 
                         i + 1, 
                         player.first_name, 
                         player.last_name, 
+                        format!("{} ({})", truncate_string(&player.teams, 16), player.team_count),
                         player.first_season, 
                         player.last_season,
                         player.total_games_played);
             }
+
+
+            // create top 10 hits
+            println!();
+
+            // sort players by homeruns (highest first)
+            let mut sorted_career_by_hits = aggregated_players.clone();
+            sorted_career_by_hits.sort_by(|a, b| b.total_hits.cmp(&a.total_hits));
+
+            // take the top 10
+            let top_10_career_hits = &sorted_career_by_hits[0..10];
+
+            // display the results
+            println!("\nTop 10 most hits in a career:");
+            println!("{:<4} {:<15} {:<15} {:<20} {:<6} {:<6} {:<3}", "Rank", "First Name", "Teams", "Last Name", "From", "To", "Hits");
+            println!("{}", "-".repeat(76));
+
+            for (i, player) in top_10_career_hits.iter().enumerate() {
+                println!("{:<4} {:<15} {:<15} {:<20} {:<6} {:<6} {:<3}", 
+                        i + 1, 
+                        player.first_name, 
+                        player.last_name, 
+                        format!("{} ({})", truncate_string(&player.teams, 16), player.team_count),
+                        player.first_season, 
+                        player.last_season,
+                        player.total_hits);
+            }
+
+            // create top 10 homeruns
+            println!();
+
+            // sort players by homeruns (highest first)
+            let mut sorted_career_by_homeruns = aggregated_players.clone();
+            sorted_career_by_homeruns.sort_by(|a, b| b.total_homeruns.cmp(&a.total_homeruns));
+
+            // take the top 10
+            let top_10_career_homeruns = &sorted_career_by_homeruns[0..10];
+
+            // display the results
+            println!("\nTop 10 most homeruns in a career:");
+            println!("{:<4} {:<15} {:<15} {:<20} {:<6} {:<6} {:<3}", "Rank", "First Name", "Teams", "Last Name", "From", "To", "HRs");
+            println!("{}", "-".repeat(75));
+
+            for (i, player) in top_10_career_homeruns.iter().enumerate() {
+                println!("{:<4} {:<15} {:<15} {:<20} {:<6} {:<6} {:<3}", 
+                        i + 1, 
+                        player.first_name, 
+                        player.last_name,
+                        format!("{} ({})", truncate_string(&player.teams, 16), player.team_count),
+                        player.first_season, 
+                        player.last_season,
+                        player.total_homeruns);
+            }
         }
-        
+
         None => {
             println!("Baseball Statistics Tool");
             println!("========================");
