@@ -15,6 +15,9 @@ use std::path::Path;
 // tool for looking up data
 use std::collections::HashMap;
 
+// clap is what reads command line arguments, it also needs adding as a dependency to cargo.toml
+use clap::{Parser, Subcommand};
+
 // set up the framework for the data we're going to import
 #[derive(Debug, Deserialize, Clone)]
 struct PlayerSeason {
@@ -116,6 +119,10 @@ fn clean_player_data(raw: PlayerSeason) -> CleanPlayerSeason {
 
 // the main function
 fn main() -> Result<(), Box<dyn Error>> {
+
+    // read and parse command line arguments
+    let cli = Cli::parse();
+
     println!("Loading baseball data...");
     
     // tell it where the data is
@@ -164,58 +171,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     println!("Successfully cleaned {} records", clean_records.len());
-
-    // create top 10 home run seasons
-    println!();
-
-    // sort players by home runs (highest first)
-    let mut sorted_by_homeruns = clean_records.clone();
-    sorted_by_homeruns.sort_by(|a, b| b.homeruns.cmp(&a.homeruns));
-
-    // take the top 10
-    let top_10_homeruns = &sorted_by_homeruns[0..10];
-
-    // display the results
-    println!("\nTop 10 home runs in a season:");
-    println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", "Rank", "First Name", "Last Name", "Team", "Season", "HR");
-    println!("{}", "-".repeat(60));
-
-    for (i, player) in top_10_homeruns.iter().enumerate() {
-        let first_name = player.first_name.as_deref().unwrap_or("N/A");
-        println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", 
-                i + 1, 
-                first_name, 
-                player.last_name, 
-                player.team, 
-                player.season, 
-                player.homeruns);
-    }
-
-    // create top 10 hit seasons
-    println!();
-
-    // sort players by hits (highest first)
-    let mut sorted_by_hits = clean_records.clone();
-    sorted_by_hits.sort_by(|a, b| b.hits.cmp(&a.hits));
-
-    // take the top 10
-    let top_10_hits = &sorted_by_hits[0..10];
-
-    // display the results
-    println!("\nTop 10 hits in a season:");
-    println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", "Rank", "First Name", "Last Name", "Team", "Season", "Hits");
-    println!("{}", "-".repeat(60));
-
-    for (i, player) in top_10_hits.iter().enumerate() {
-        let first_name = player.first_name.as_deref().unwrap_or("N/A");
-        println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", 
-                i + 1, 
-                first_name, 
-                player.last_name, 
-                player.team, 
-                player.season, 
-                player.hits);
-    }
 
 #[derive(Debug, Clone)]
 struct AggregatedPlayer {
@@ -324,61 +279,159 @@ for (link, seasons) in &player_groups {
     aggregated_players.push(aggregated_player);
 }
 
-    // create top 10 games played
-    println!();
 
-    // sort players by homeruns (highest first)
-    let mut sorted_career_by_games = aggregated_players.clone();
-    sorted_career_by_games.sort_by(|a, b| b.total_games_played.cmp(&a.total_games_played));
+// reading the command line arguments  
+#[derive(Parser)]
+#[command(name = "baseball-stats")]
+#[command(about = "A CLI tool for analyzing baseball statistics")]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
 
-    // take the top 10
-    let top_10_career_games = &sorted_career_by_games[0..10];
+// define the available commands
+#[derive(Subcommand)]
+enum Commands {
+    /// show home run records
+    Homeruns,
+    /// show season records 
+    Seasons,
+    /// show career records
+    Careers,
+}
 
-    // display the results
-    println!("\nTop 10 games played in a career:");
-    println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<3}", "Rank", "First Name", "Last Name", "From", "To", "Games Played");
-    println!("{}", "-".repeat(63));
 
-    for (i, player) in top_10_career_games.iter().enumerate() {
-        println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<3}", 
-                i + 1, 
-                player.first_name, 
-                player.last_name, 
-                player.first_season, 
-                player.last_season,
-                player.total_games_played);
+    // handle the command line argument
+    match cli.command {
+        Some(Commands::Homeruns) => {
+
+            // create top 10 home run seasons
+            println!();
+
+            // sort players by home runs (highest first)
+            let mut sorted_by_homeruns = clean_records.clone();
+            sorted_by_homeruns.sort_by(|a, b| b.homeruns.cmp(&a.homeruns));
+
+            // take the top 10
+            let top_10_homeruns = &sorted_by_homeruns[0..10];
+
+            // display the results
+            println!("\nTop 10 home runs in a season:");
+            println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", "Rank", "First Name", "Last Name", "Team", "Season", "HR");
+            println!("{}", "-".repeat(60));
+
+            for (i, player) in top_10_homeruns.iter().enumerate() {
+                let first_name = player.first_name.as_deref().unwrap_or("N/A");
+                println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", 
+                        i + 1, 
+                        first_name, 
+                        player.last_name, 
+                        player.team, 
+                        player.season, 
+                        player.homeruns);
+            }
+            
+            
+            
+            // create top 10 homerun career
+            println!();
+
+            // sort players by homeruns (highest first)
+            let mut sorted_career_by_homeruns = aggregated_players.clone();
+            sorted_career_by_homeruns.sort_by(|a, b| b.total_homeruns.cmp(&a.total_homeruns));
+
+            // take the top 10
+            let top_10_career_homeruns = &sorted_career_by_homeruns[0..10];
+
+            // display the results
+            println!("\nTop 10 homeruns in a career:");
+            println!();
+            println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<6} {:<3}", "Rank", "First Name", "Last Name", "From", "To", "Total", "Home runs");
+            println!("{}", "-".repeat(67));
+
+            for (i, player) in top_10_career_homeruns.iter().enumerate() {
+                println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<6} {:<3}", 
+                        i + 1, 
+                        player.first_name, 
+                        player.last_name, 
+                        player.first_season, 
+                        player.last_season,
+                        player.seasons_played,
+                        player.total_homeruns);
     }
+            
 
 
-    // create top 10 homerun career
-    println!();
+        }
+        Some(Commands::Seasons) => {
+            
+            // create top 10 hit seasons
+            println!();
 
-    // sort players by homeruns (highest first)
-    let mut sorted_career_by_homeruns = aggregated_players.clone();
-    sorted_career_by_homeruns.sort_by(|a, b| b.total_homeruns.cmp(&a.total_homeruns));
+            // sort players by hits (highest first)
+            let mut sorted_by_hits = clean_records.clone();
+            sorted_by_hits.sort_by(|a, b| b.hits.cmp(&a.hits));
 
-    // take the top 10
-    let top_10_career_homeruns = &sorted_career_by_homeruns[0..10];
+            // take the top 10
+            let top_10_hits = &sorted_by_hits[0..10];
 
-    // display the results
-    println!("\nTop 10 homeruns in a career:");
-    println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<6} {:<3}", "Rank", "First Name", "Last Name", "From", "To", "Total", "Home runs");
-    println!("{}", "-".repeat(67));
+            // display the results
+            println!("\nTop 10 hits in a season:");
+            println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", "Rank", "First Name", "Last Name", "Team", "Season", "Hits");
+            println!("{}", "-".repeat(60));
 
-    for (i, player) in top_10_career_homeruns.iter().enumerate() {
-        println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<6} {:<3}", 
-                i + 1, 
-                player.first_name, 
-                player.last_name, 
-                player.first_season, 
-                player.last_season,
-                player.seasons_played,
-                player.total_homeruns);
+            for (i, player) in top_10_hits.iter().enumerate() {
+                let first_name = player.first_name.as_deref().unwrap_or("N/A");
+                println!("{:<4} {:<15} {:<15} {:<6} {:<8} {:<3}", 
+                        i + 1, 
+                        first_name, 
+                        player.last_name, 
+                        player.team, 
+                        player.season, 
+                        player.hits);
+            }
+        }
+        Some(Commands::Careers) => {
+            
+            // create top 10 games played
+            println!();
+
+            // sort players by homeruns (highest first)
+            let mut sorted_career_by_games = aggregated_players.clone();
+            sorted_career_by_games.sort_by(|a, b| b.total_games_played.cmp(&a.total_games_played));
+
+            // take the top 10
+            let top_10_career_games = &sorted_career_by_games[0..10];
+
+            // display the results
+            println!("\nTop 10 games played in a career:");
+            println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<3}", "Rank", "First Name", "Last Name", "From", "To", "Games Played");
+            println!("{}", "-".repeat(63));
+
+            for (i, player) in top_10_career_games.iter().enumerate() {
+                println!("{:<4} {:<15} {:<15} {:<6} {:<6} {:<3}", 
+                        i + 1, 
+                        player.first_name, 
+                        player.last_name, 
+                        player.first_season, 
+                        player.last_season,
+                        player.total_games_played);
+            }
+        }
+        
+        None => {
+            println!("Baseball Statistics Tool");
+            println!("========================");
+            println!();
+            println!("Available commands:");
+            println!("  homeruns  - Show home run records (single season and career)");
+            println!("  seasons   - Show single season records");  
+            println!("  careers   - Show career records");
+            println!();
+            println!("Usage: cargo run -- <command>");
+            println!("For more help: cargo run -- --help");
+        }
     }
-
-
-
-
 
 
     Ok(())
